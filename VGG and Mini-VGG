@@ -115,3 +115,19 @@ class VGG(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
+features = make_layers(cfgs['MiniVGG'], batch_norm=False)
+vgg = VGG(features)
+
+features = make_layers(cfgs['MiniVGG-BN'], batch_norm=True)
+vgg_bn = VGG(features)
+
+# Print the network architectrue. Please compare the printed architecture with 
+# the one given in the instructions above. 
+# Make sure your network has the same architecture as the one we give above.
+print(vgg)
+print('Number of trainable parameters {}'.format(count_params(vgg)))
+
+print(vgg_bn)
+print('Number of trainable parameters {}'.format(count_params(vgg_bn)))
+
+
