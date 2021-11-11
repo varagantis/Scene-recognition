@@ -1,0 +1,17 @@
+# Initialize MiniVGG
+features = make_layers(cfgs['MiniVGG'], batch_norm=False)
+model = VGG(features).to(device)
+optimizer = make_optimizer(model)
+
+# Train the model!
+vgg, tr_his, val_his = train_model(model=model, dataloaders=dataloaders, criterion=criterion, optimizer=optimizer,
+           save_dir=save_dir, num_epochs=num_epochs, model_name='MiniVGG')
+           
+# Initialize MiniVGG-BN
+features = make_layers(cfgs['MiniVGG-BN'], batch_norm=True)
+model = VGG(features).to(device)
+optimizer = make_optimizer(model)
+
+# Train the model!
+vgg_BN, tr_his_BN, val_his_BN = train_model(model=model, dataloaders=dataloaders, criterion=criterion, optimizer=optimizer,
+           save_dir=save_dir, num_epochs=num_epochs, model_name='MiniVGG-BN')
