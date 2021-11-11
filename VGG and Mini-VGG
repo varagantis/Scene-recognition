@@ -1,0 +1,117 @@
+# Network configurations for all layers before the final fully-connected layers. 
+# "M" corresponds to maxpooling layer, integers correspond to number of output 
+# channels of a convolutional layer.
+cfgs = {
+    'MiniVGG': [64, 'M', 128, 'M', 128, 128, 'M'],
+    'MiniVGG-BN': [64, 'M', 128, 'M', 128, 128, 'M']
+}
+
+def make_layers(cfg, batch_norm=False):
+    """
+    Return a nn.Sequential object containing all layers to get the features 
+    using the CNN. 
+    Args:
+      cfg: list
+      batch_norm: bool, default: False. If set to True, a BatchNorm layer 
+                  should be added after each convolutional layer.
+
+    Return:
+      features: torch.nn.Sequential. Containers for all feature extraction
+                layers. For use of torch.nn.Sequential, please refer to 
+                PyTorch documentation.
+    """
+    ###########################################################################
+    # the neural net architecture from cfg.     #
+    ###########################################################################
+    if (batch_norm):
+      features = nn.Sequential(
+          nn.Conv2d(3, cfg[0],(3,3),(1,1),(1,1)),
+          nn.BatchNorm2d(cfg[0]),
+          nn.ReLU(inplace=True),
+          nn.MaxPool2d(2,2),
+          nn.Conv2d(cfg[0],cfg[2],(3,3),(1,1),(1,1)),
+          nn.BatchNorm2d(cfg[2]),
+          nn.ReLU(inplace=True),
+          nn.MaxPool2d(2,2),
+          nn.Conv2d(cfg[2],cfg[4],(3,3),(1,1),(1,1)),
+          nn.BatchNorm2d(cfg[4]),
+          nn.ReLU(True),
+          nn.Conv2d(cfg[4],cfg[5],(3,3),(1,1),(1,1)),
+          nn.BatchNorm2d(cfg[5]),
+          nn.ReLU(True),
+          nn.MaxPool2d(2,2)
+          )
+    else:
+      features = nn.Sequential(
+          nn.Conv2d(3, cfg[0],(3,3),(1,1),(1,1)),
+          #nn.BatchNorm2d(cfg[0]),
+          nn.ReLU(inplace=True),
+          nn.MaxPool2d(2,2),
+          nn.Conv2d(cfg[0],cfg[2],(3,3),(1,1),(1,1)),
+          #nn.BatchNorm2d(cfg[2]),
+          nn.ReLU(inplace=True),
+          nn.MaxPool2d(2,2),
+          nn.Conv2d(cfg[2],cfg[4],(3,3),(1,1),(1,1)),
+          #nn.BatchNorm2d(cfg[4]),
+          nn.ReLU(True),
+          nn.Conv2d(cfg[4],cfg[5],(3,3),(1,1),(1,1)),
+          #nn.BatchNorm2d(cfg[5]),
+          nn.ReLU(True),
+          nn.MaxPool2d(2,2)
+      )
+
+
+    ###########################################################################
+    #                                                   #
+    ###########################################################################
+
+    return features
+
+class VGG(nn.Module):
+
+    def __init__(self, features, num_classes=100, init_weights=True):
+        super(VGG, self).__init__()
+
+        self.features = features
+        self.avgpool = nn.AdaptiveAvgPool2d((5, 5))
+
+        #######################################################################
+        #  the final FC layers using nn.Sequential.            #
+        # Note: The average pooling layer has been defined by us above.       #
+        #######################################################################
+        self.classifier = nn.Sequential(
+                        nn.Linear((3200),(512)),
+                        nn.ReLU(True),
+                        nn.Dropout(0.3),
+                        nn.Linear((512),(256)),
+                        nn.ReLU(True),
+                        nn.Dropout(0.3),
+                        nn.Linear(256,100)
+                        )    
+
+        #######################################################################
+        #                                                  #
+        #######################################################################
+
+        if init_weights:
+            self._initialize_weights()
+        
+    def forward(self, x): 
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
