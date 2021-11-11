@@ -1,0 +1,146 @@
+def make_optimizer(model):
+    """
+    Args:
+        model: NN to train
+
+    Returns:
+        optimizer: pytorch optmizer for updating the given model parameters.
+    """
+    ###########################################################################
+    #  Create a SGD optimizer with learning rate=1e-2 and momentum=0.9.  #
+    
+    ###########################################################################
+    optimizer = optim.SGD(model.parameters(), lr= 1e-2, momentum=0.9)
+
+    ###########################################################################
+    #                                                  #
+    ###########################################################################
+    return optimizer
+
+def get_loss():
+    """
+    Returns:
+        criterion: pytorch loss. 
+    """
+    ###########################################################################
+    #Create an instance of the cross entropy loss. This code           #
+    #                                        #
+    ###########################################################################
+    criterion = nn.CrossEntropyLoss()
+
+    ###########################################################################
+    #                              END OF YOUR CODE                           #
+    ###########################################################################
+
+    return criterion
+def train_model(model, dataloaders, criterion, optimizer, save_dir = None, num_epochs=25, model_name='MiniVGG'):
+    """
+    Args:
+        model: The NN to train
+        dataloaders: A dictionary containing at least the keys 
+                    'train','val' that maps to Pytorch data loaders for the dataset
+        criterion: The Loss function
+        optimizer: Pytroch optimizer. The algorithm to update weights 
+        num_epochs: How many epochs to train for
+        save_dir: Where to save the best model weights that are found. Using None will not write anything to disk.
+
+    Returns:
+        model: The trained NN
+        tr_acc_history: list, training accuracy history. Recording freq: one epoch.
+        val_acc_history: list, validation accuracy history. Recording freq: one epoch.
+    """
+
+    val_acc_history = []
+    tr_acc_history = []
+    
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_acc = 0.0
+
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
+
+        # Each epoch has a training and validation phase
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model=model.train()  # Set model to training mode
+            else:
+                model=model.eval()   # Set model to evaluate mode
+
+            # loss and number of correct prediction for the current batch
+            running_loss = 0.0
+            running_corrects = 0
+            
+
+            # Iterate over data.
+            # TQDM has nice progress bars
+            for inputs, labels in tqdm(dataloaders[phase]):
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                
+                ###############################################################
+              
+                # For "train" phase:                                          #
+                # (i)   Compute the outputs using the model                   #
+                #       Also, use the  outputs to calculate the class         #
+                #       predicted by the model,                               #
+                #       Store the predicted class in 'preds'                  #
+                #       (Think: argmax of outputs across a dimension)         #
+                #       torch.max() might help!                               #
+                # (ii)  Use criterion to store the loss in 'loss'             # 
+                # (iii) Update the model parameters                           #
+                # Notes:                                                      #
+                # - Don't forget to zero the gradients before beginning the   #
+                # loop!                                                       #
+                # - "val" phase is the same as train, but without backprop    #
+                # - Compute the outputs (Same as "train", calculate 'preds'   #
+                # too),                                                       #
+                # - Calculate the loss and store it in 'loss'                 #
+                ###############################################################
+                                               
+                if phase == 'train':
+                  optimizer.zero_grad()  
+                  output = model(inputs)
+                  _, preds = torch.max(output.data,1)
+                  loss = criterion(output, labels)
+                  loss.backward()
+                                      
+                  optimizer.step()
+                else:
+                  with torch.no_grad():
+                    output = model(inputs)
+                    _, preds = torch.max(output.data,1)
+                    loss = criterion(output, labels)
+                  
+                                                    
+                  
+
+            ###############################################################
+
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(preds == labels.data)
+
+            epoch_loss = running_loss / len(dataloaders[phase].dataset)
+            epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
+
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+
+            # deep copy the model
+            if phase == 'val' and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+
+                # save the best model weights
+            if save_dir:
+                    torch.save(best_model_wts, os.path.join(save_dir, model_name + '.pth'))
+
+            # record the train/val accuracies
+            if phase == 'val':
+                val_acc_history.append(epoch_acc)
+            else:
+                tr_acc_history.append(epoch_acc)
+                
+    print('Best val Acc: {:4f}'.format(best_acc))
+
+    return model, tr_acc_history, val_acc_history    
